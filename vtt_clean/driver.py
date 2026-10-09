@@ -16,10 +16,18 @@ from vtt_clean.pipeline.runner import build_runner
 from vtt_clean.stats.metrics import compute_file_metrics
 
 # Eagerly import step modules so @register_step runs
-for _m in ("strip_cue_settings", "extract_word_timings", "youtube_dedup",
-           "extract_events", "quran_detect", "strip_emoji",
-           "strip_diacritics", "strip_punctuation", "normalize_whitespace",
-           "compute_metrics"):
+for _m in (
+    "strip_cue_settings",
+    "extract_word_timings",
+    "youtube_dedup",
+    "extract_events",
+    "quran_detect",
+    "strip_emoji",
+    "strip_diacritics",
+    "strip_punctuation",
+    "normalize_whitespace",
+    "compute_metrics",
+):
     importlib.import_module(f"vtt_clean.pipeline.steps.{_m}")
 
 ALL_FORMATS = {"jsonl", "stm", "txt", "hf", "kaldi"}
@@ -43,7 +51,9 @@ def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig
     steps = [s for s in spec.steps if not (cfg.no_youtube_dedup and s == "youtube_dedup")]
     runner = build_runner(PipelineSpec(steps=steps))
     ctx = PipelineContext(
-        taxonomy=taxonomy, source=path.name, lang=cfg.lang,
+        taxonomy=taxonomy,
+        source=path.name,
+        lang=cfg.lang,
         emit_word_timings=cfg.emit_word_timings,
         strip_diacritics_mode=cfg.strip_diacritics,
         keep_punctuation=cfg.keep_punctuation,
@@ -90,4 +100,5 @@ def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig
 def _worker(args):
     path_str, out_dir_str, formats, cfg = args
     from pathlib import Path as _P
+
     return path_str, process_one(_P(path_str), _P(out_dir_str), set(formats), cfg)

@@ -7,6 +7,7 @@ from vtt_clean.pipeline.base import PipelineContext, register_step
 @register_step("compute_metrics")
 class ComputeMetrics:
     name = "compute_metrics"
+
     def apply(self, seg: Segment, ctx: PipelineContext) -> Segment:
         seg.n_words = len(seg.text.split())
         seg.n_chars = len(seg.text)

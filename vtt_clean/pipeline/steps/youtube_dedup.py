@@ -36,11 +36,13 @@ class YouTubeDedup:
         ctx.extras["dedup_removed_chars"] = ctx.extras.get("dedup_removed_chars", 0) + removed_chars
         yield from kept
 
+
 def _is_spacer(cue: RawCue, prev: RawCue | None) -> bool:
     dur = cue.end - cue.start
     if dur <= 0.020 and cue.text.strip() == "":
         return True
     return prev is not None and cue.text.strip() == prev.text.strip() and dur <= 0.050
+
 
 def _overlap_len(prev: str, curr: str) -> int:
     """Longest common prefix of curr with any suffix of prev, returned as a

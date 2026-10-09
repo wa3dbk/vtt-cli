@@ -8,6 +8,7 @@ def write_stats_json(data: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
+
 def write_stats_tsv(rows: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if not rows:
@@ -18,6 +19,7 @@ def write_stats_tsv(rows: list[dict], path: Path) -> None:
     for r in rows:
         out.append("\t".join(str(r.get(k, "")) for k in keys))
     path.write_text("\n".join(out) + "\n", encoding="utf-8")
+
 
 def write_unknown_events_tsv(aggregated: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -8,6 +8,7 @@ from vtt_clean.util.arabic import count_tashkeel
 
 _BRACE = re.compile(r"\{([^\{\}]*)\}")
 
+
 @register_step("quran_detect")
 class QuranDetect:
     name = "quran_detect"

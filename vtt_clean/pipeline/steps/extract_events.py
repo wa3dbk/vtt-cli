@@ -9,6 +9,7 @@ from vtt_clean.util.arabic import count_tashkeel
 # Spans with surrounding delimiters captured; whitespace handling preserved.
 _SPAN = re.compile(r"(\[[^\[\]]*\]|\{[^\{\}]*\}|\([^\(\)]*\))")
 
+
 @register_step("extract_events")
 class ExtractEvents:
     name = "extract_events"
@@ -43,8 +44,11 @@ class ExtractEvents:
             if ev_type == "unk":
                 seg.flags.setdefault("unknown_events", []).append(surface)
             position = _position(standalone_span, i, len(matches), m, text)
-            events.append(Event(type=ev_type, surface=surface,
-                                start=seg.start, end=seg.end, position=position))
+            events.append(
+                Event(
+                    type=ev_type, surface=surface, start=seg.start, end=seg.end, position=position
+                )
+            )
             replacements.append((m.start(), m.end(), ""))
             _ = keep_in_text  # silence linter
         # Apply replacements right-to-left.
@@ -55,11 +59,12 @@ class ExtractEvents:
         seg.events = events
         return seg
 
+
 def _position(standalone: bool, i: int, total: int, m, text: str) -> str:
     if standalone:
         return "standalone"
     if i == 0 and text[: m.start()].strip() == "":
         return "pre"
-    if i == total - 1 and text[m.end():].strip() == "":
+    if i == total - 1 and text[m.end() :].strip() == "":
         return "post"
     return "mid"

@@ -1,5 +1,7 @@
 from click.testing import CliRunner
+
 from vtt_clean.cli import main
+
 
 def test_cli_help_exits_zero():
     result = CliRunner().invoke(main, ["--help"])

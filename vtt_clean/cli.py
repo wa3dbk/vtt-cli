@@ -44,25 +44,47 @@ def main() -> None:
 @click.argument("inputs", nargs=-1, required=True)
 @click.option("-o", "--out-dir", type=click.Path(path_type=Path), default=Path("out"))
 @click.option("--glob", default="*.vtt", show_default=True)
-@click.option("--format", "formats", multiple=True,
-              type=click.Choice(["jsonl", "stm", "txt", "hf", "kaldi", "all"]),
-              default=["all"], show_default=True)
+@click.option(
+    "--format",
+    "formats",
+    multiple=True,
+    type=click.Choice(["jsonl", "stm", "txt", "hf", "kaldi", "all"]),
+    default=["all"],
+    show_default=True,
+)
 @click.option("--config", type=click.Path(exists=True, path_type=Path), default=None)
 @click.option("--taxonomy", type=click.Path(exists=True, path_type=Path), default=None)
 @click.option("--emit-word-timings", is_flag=True)
 @click.option("--no-youtube-dedup", is_flag=True)
-@click.option("--strip-diacritics",
-              type=click.Choice(["none", "non-quran", "all"]), default="non-quran",
-              show_default=True)
+@click.option(
+    "--strip-diacritics",
+    type=click.Choice(["none", "non-quran", "all"]),
+    default="non-quran",
+    show_default=True,
+)
 @click.option("--keep-punctuation", is_flag=True)
 @click.option("--keep-symbols", is_flag=True)
 @click.option("--no-stats", is_flag=True)
 @click.option("--vocab", type=click.Path(exists=True, path_type=Path), default=None)
 @click.option("--lang", default="ar", show_default=True)
 @click.option("--jobs", type=int, default=min(8, os.cpu_count() or 1), show_default=True)
-def process(inputs, out_dir, glob, formats, config, taxonomy, emit_word_timings,
-            no_youtube_dedup, strip_diacritics, keep_punctuation, keep_symbols,
-            no_stats, vocab, lang, jobs):
+def process(
+    inputs,
+    out_dir,
+    glob,
+    formats,
+    config,
+    taxonomy,
+    emit_word_timings,
+    no_youtube_dedup,
+    strip_diacritics,
+    keep_punctuation,
+    keep_symbols,
+    no_stats,
+    vocab,
+    lang,
+    jobs,
+):
     """Clean VTTs and emit one or more formats."""
     files = _resolve_inputs(inputs, glob)
     if not files:
@@ -74,10 +96,14 @@ def process(inputs, out_dir, glob, formats, config, taxonomy, emit_word_timings,
         else:
             fmts.add(f)
     cfg = ProcessConfig(
-        taxonomy_path=taxonomy, pipeline_path=config,
-        emit_word_timings=emit_word_timings, no_youtube_dedup=no_youtube_dedup,
-        strip_diacritics=strip_diacritics, keep_punctuation=keep_punctuation,
-        keep_symbols=keep_symbols, lang=lang,
+        taxonomy_path=taxonomy,
+        pipeline_path=config,
+        emit_word_timings=emit_word_timings,
+        no_youtube_dedup=no_youtube_dedup,
+        strip_diacritics=strip_diacritics,
+        keep_punctuation=keep_punctuation,
+        keep_symbols=keep_symbols,
+        lang=lang,
     )
     out_dir.mkdir(parents=True, exist_ok=True)
     # Fresh HF manifest if emitted.
@@ -93,6 +119,7 @@ def process(inputs, out_dir, glob, formats, config, taxonomy, emit_word_timings,
             per_file_segments[p.name] = segs
     else:
         from vtt_clean.driver import _worker
+
         args_iter = [(str(p), str(out_dir), list(fmts), cfg) for p in files]
         with Pool(processes=jobs) as pool:
             for name_in, (m, segs) in pool.imap_unordered(_worker, args_iter):
@@ -123,9 +150,14 @@ def inspect(file: Path, stage: str | None):
         steps = steps[: steps.index(stage) + 1]
     runner = build_runner(PipelineSpec(steps=steps))
     ctx = PipelineContext(
-        taxonomy=taxonomy, source=file.name, lang="ar",
-        emit_word_timings=False, strip_diacritics_mode="non-quran",
-        keep_punctuation=False, keep_symbols=False, extras={},
+        taxonomy=taxonomy,
+        source=file.name,
+        lang="ar",
+        emit_word_timings=False,
+        strip_diacritics_mode="non-quran",
+        keep_punctuation=False,
+        keep_symbols=False,
+        extras={},
     )
     for seg in runner.run(parse_vtt(file), ctx):
         click.echo(json.dumps(seg.to_json_dict(), ensure_ascii=False))
@@ -137,7 +169,9 @@ def taxonomy() -> None:
 
 
 @taxonomy.command("show")
-@click.option("--taxonomy", "taxonomy_path", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option(
+    "--taxonomy", "taxonomy_path", type=click.Path(exists=True, path_type=Path), default=None
+)
 def tax_show(taxonomy_path: Path | None):
     """Print taxonomy events, aliases, and tokens."""
     tax = load_taxonomy(taxonomy_path)

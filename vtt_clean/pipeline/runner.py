@@ -15,9 +15,15 @@ from vtt_clean.pipeline.base import (
 # Ordering constraints: {step_that_must_come_first: {steps_that_must_come_after}}
 ORDERING: dict[str, set[str]] = {
     "extract_word_timings": {"youtube_dedup"},
-    "extract_events": {"strip_emoji", "strip_diacritics", "strip_punctuation", "normalize_whitespace"},
+    "extract_events": {
+        "strip_emoji",
+        "strip_diacritics",
+        "strip_punctuation",
+        "normalize_whitespace",
+    },
     "quran_detect": {"strip_diacritics"},
 }
+
 
 @dataclass
 class Runner:
@@ -33,16 +39,24 @@ class Runner:
             seg = Segment(
                 id=f"{_stem(ctx.source)}-{idx:04d}",
                 source=ctx.source,
-                start=cue.start, end=cue.end, duration=max(0.0, cue.end - cue.start),
-                text=cue.text, text_raw=cue.text,
+                start=cue.start,
+                end=cue.end,
+                duration=max(0.0, cue.end - cue.start),
+                text=cue.text,
+                text_raw=cue.text,
                 lang=ctx.lang,
-                flags={"youtube_dedup_applied": False, "had_karaoke_timing": False,
-                       "had_cue_settings": bool(cue.settings), "unknown_events": []},
+                flags={
+                    "youtube_dedup_applied": False,
+                    "had_karaoke_timing": False,
+                    "had_cue_settings": bool(cue.settings),
+                    "unknown_events": [],
+                },
             )
             for s in self.seg_steps:
                 seg = s.apply(seg, ctx)
             segments.append(seg)
         return segments
+
 
 def _stem(source: str) -> str:
     base = source.rsplit("/", 1)[-1]
@@ -50,6 +64,7 @@ def _stem(source: str) -> str:
         if base.endswith(suffix):
             return base[: -len(suffix)]
     return base
+
 
 def build_runner(spec: PipelineSpec) -> Runner:
     known = all_step_names()
@@ -63,9 +78,7 @@ def build_runner(spec: PipelineSpec) -> Runner:
             continue
         for after in afters:
             if after in positions and positions[after] <= positions[before]:
-                raise PipelineError(
-                    f"order violation: {before!r} must come before {after!r}"
-                )
+                raise PipelineError(f"order violation: {before!r} must come before {after!r}")
     stream_steps = []
     seg_steps = []
     for name in spec.steps:

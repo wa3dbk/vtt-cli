@@ -6,9 +6,8 @@ from pathlib import Path
 
 from vtt_clean.model import RawCue
 
-_TS_LINE = re.compile(
-    r"^\s*(\d\d:)?\d\d:\d\d\.\d{3}\s*-->\s*(\d\d:)?\d\d:\d\d\.\d{3}(\s+.*)?$"
-)
+_TS_LINE = re.compile(r"^\s*(\d\d:)?\d\d:\d\d\.\d{3}\s*-->\s*(\d\d:)?\d\d:\d\d\.\d{3}(\s+.*)?$")
+
 
 def _ts_to_sec(ts: str) -> float:
     parts = ts.strip().split(":")
@@ -17,6 +16,7 @@ def _ts_to_sec(ts: str) -> float:
         return int(h) * 3600 + int(m) * 60 + float(s)
     m, s = parts
     return int(m) * 60 + float(s)
+
 
 def parse_vtt(path: Path) -> Iterator[RawCue]:
     with open(path, encoding="utf-8") as fh:

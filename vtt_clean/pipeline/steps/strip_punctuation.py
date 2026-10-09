@@ -8,6 +8,7 @@ from vtt_clean.util.unicode_classes import strip_punct
 @register_step("strip_punctuation")
 class StripPunctuation:
     name = "strip_punctuation"
+
     def apply(self, seg: Segment, ctx: PipelineContext) -> Segment:
         if ctx.keep_punctuation:
             return seg

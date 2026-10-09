@@ -10,11 +10,12 @@ _INLINE_TS = re.compile(r"<(\d\d):(\d\d):(\d\d\.\d{3})>")
 _C_OPEN = re.compile(r"<c[^>]*>")
 _C_CLOSE = re.compile(r"</c>")
 
+
 def _ts_to_sec(h: str, m: str, s: str) -> float:
     return int(h) * 3600 + int(m) * 60 + float(s)
 
-@register_stream_step("extract_word_timings")
 
+@register_stream_step("extract_word_timings")
 class ExtractWordTimings:
     name = "extract_word_timings"
 
@@ -33,6 +34,7 @@ class ExtractWordTimings:
             text = _C_CLOSE.sub("", text)
             cue.text = text
             yield cue
+
 
 def _extract_words(text: str) -> list[dict]:
     # Pattern: <ts><c> word</c>

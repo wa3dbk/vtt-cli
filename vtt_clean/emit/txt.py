@@ -23,6 +23,7 @@ def render_text_with_events(seg: Segment, taxonomy: Taxonomy) -> str:
     parts = pre + ([seg.text] if seg.text else []) + post
     return " ".join(p for p in parts if p)
 
+
 def emit_txt(segments: Iterable[Segment], out: TextIO, taxonomy: Taxonomy | None = None) -> None:
     tax = taxonomy or load_taxonomy(None)
     for seg in segments:

@@ -19,3 +19,15 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q --cov=vtt_clean --cov-fail-under=85
+
+  e2e:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -e ".[dev]"
+      - run: vtt-clean process tests/fixtures/clean tests/fixtures/youtube tests/fixtures/quran tests/fixtures/edge -o /tmp/out --format all
+      - run: test -s /tmp/out/stats.json
+      - run: test -s /tmp/out/unknown-events.tsv

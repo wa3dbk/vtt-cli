@@ -15,6 +15,7 @@ def _quantile(xs: list[float], q: float) -> float:
     c = min(f + 1, len(xs) - 1)
     return xs[f] + (xs[c] - xs[f]) * (k - f)
 
+
 def compute_file_metrics(segments: list[Segment], removed_chars: int = 0) -> dict:
     wps = [s.wps for s in segments if s.wps > 0]
     wps_per_seg = [s.n_words for s in segments]
@@ -24,7 +25,9 @@ def compute_file_metrics(segments: list[Segment], removed_chars: int = 0) -> dic
         "n_segments": len(segments),
         "n_words": sum(s.n_words for s in segments),
         "total_speech_sec": sum(durs),
-        "total_event_only_sec": sum(s.duration for s in segments if not s.text.strip() and s.events),
+        "total_event_only_sec": sum(
+            s.duration for s in segments if not s.text.strip() and s.events
+        ),
         "wps_mean": (st.mean(wps) if wps else 0.0),
         "wps_median": (st.median(wps) if wps else 0.0),
         "words_per_seg_mean": (st.mean(wps_per_seg) if wps_per_seg else 0.0),
@@ -37,6 +40,7 @@ def compute_file_metrics(segments: list[Segment], removed_chars: int = 0) -> dic
         "n_unknown_events": sum(len(s.flags.get("unknown_events", [])) for s in segments),
         "youtube_dedup_removed_dup_chars": removed_chars,
     }
+
 
 def aggregate_corpus(
     file_metrics: list[dict],
@@ -52,7 +56,9 @@ def aggregate_corpus(
         "total_speech_sec": sum(m["total_speech_sec"] for m in file_metrics),
         "n_events_total": sum(m["n_events_total"] for m in file_metrics),
         "n_quran_segments": sum(m["n_quran_segments"] for m in file_metrics),
-        "youtube_dedup_removed_dup_chars": sum(m["youtube_dedup_removed_dup_chars"] for m in file_metrics),
+        "youtube_dedup_removed_dup_chars": sum(
+            m["youtube_dedup_removed_dup_chars"] for m in file_metrics
+        ),
     }
     ev_counter: Counter = Counter()
     unk_counter: Counter = Counter()

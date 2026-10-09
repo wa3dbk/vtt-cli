@@ -27,7 +27,9 @@ def emit_kaldi(
             rows_text.append(f"{seg.id} {text}")
         rows_segments.append(f"{seg.id} {reco} {seg.start:.3f} {seg.end:.3f}")
         rows_utt2spk.append(f"{seg.id} {spk}")
-    (out_dir / "text").write_text("\n".join(rows_text) + ("\n" if rows_text else ""), encoding="utf-8")
+    (out_dir / "text").write_text(
+        "\n".join(rows_text) + ("\n" if rows_text else ""), encoding="utf-8"
+    )
     (out_dir / "segments").write_text("\n".join(rows_segments) + "\n", encoding="utf-8")
     (out_dir / "utt2spk").write_text("\n".join(rows_utt2spk) + "\n", encoding="utf-8")
     (out_dir / "wav.scp").write_text(

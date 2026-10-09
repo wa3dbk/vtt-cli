@@ -167,10 +167,13 @@ Pipeline is a declarative ordered list of named steps. Default ships with the pr
 ```python
 class Step(Protocol):
     name: str
+
     def apply(self, seg: Segment, ctx: PipelineContext) -> Segment: ...
+
 
 class StreamStep(Protocol):
     name: str
+
     def apply_stream(self, cues: Iterable[RawCue], ctx: PipelineContext) -> Iterable[RawCue]: ...
 ```
 

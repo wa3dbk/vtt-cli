@@ -6,12 +6,20 @@ from vtt_clean.cli import main
 
 FIX = Path(__file__).parent / "fixtures"
 
+
 def test_process_clean_tiny_end_to_end(tmp_path: Path):
     runner = CliRunner()
-    result = runner.invoke(main, [
-        "process", str(FIX / "clean/tiny.vtt"),
-        "-o", str(tmp_path), "--format", "all",
-    ])
+    result = runner.invoke(
+        main,
+        [
+            "process",
+            str(FIX / "clean/tiny.vtt"),
+            "-o",
+            str(tmp_path),
+            "--format",
+            "all",
+        ],
+    )
     assert result.exit_code == 0, result.output
     assert (tmp_path / "jsonl" / "tiny.jsonl").exists()
     assert (tmp_path / "stm" / "tiny.stm").exists()
@@ -25,12 +33,21 @@ def test_process_clean_tiny_end_to_end(tmp_path: Path):
     txt = (tmp_path / "txt" / "tiny.txt").read_text(encoding="utf-8")
     assert "<music>" in txt
 
+
 def test_process_no_stats_flag(tmp_path: Path):
     runner = CliRunner()
-    result = runner.invoke(main, [
-        "process", str(FIX / "clean/tiny.vtt"),
-        "-o", str(tmp_path), "--format", "jsonl", "--no-stats",
-    ])
+    result = runner.invoke(
+        main,
+        [
+            "process",
+            str(FIX / "clean/tiny.vtt"),
+            "-o",
+            str(tmp_path),
+            "--format",
+            "jsonl",
+            "--no-stats",
+        ],
+    )
     assert result.exit_code == 0
     assert not (tmp_path / "stats.json").exists()
 
@@ -38,10 +55,19 @@ def test_process_no_stats_flag(tmp_path: Path):
 def test_process_parallel_jobs_2(tmp_path: Path):
     runner = CliRunner()
     # Two files via two invocations wouldn't test pool; use the whole clean fixture dir.
-    result = runner.invoke(main, [
-        "process", str(FIX / "clean"),
-        "-o", str(tmp_path), "--format", "jsonl", "--jobs", "2",
-    ])
+    result = runner.invoke(
+        main,
+        [
+            "process",
+            str(FIX / "clean"),
+            "-o",
+            str(tmp_path),
+            "--format",
+            "jsonl",
+            "--jobs",
+            "2",
+        ],
+    )
     assert result.exit_code == 0, result.output
     jsonls = list((tmp_path / "jsonl").glob("*.jsonl"))
     assert len(jsonls) >= 1
