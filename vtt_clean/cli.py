@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+from multiprocessing import Pool
 from pathlib import Path
 
 import click
@@ -57,9 +59,10 @@ def main() -> None:
 @click.option("--no-stats", is_flag=True)
 @click.option("--vocab", type=click.Path(exists=True, path_type=Path), default=None)
 @click.option("--lang", default="ar", show_default=True)
+@click.option("--jobs", type=int, default=min(8, os.cpu_count() or 1), show_default=True)
 def process(inputs, out_dir, glob, formats, config, taxonomy, emit_word_timings,
             no_youtube_dedup, strip_diacritics, keep_punctuation, keep_symbols,
-            no_stats, vocab, lang):
+            no_stats, vocab, lang, jobs):
     """Clean VTTs and emit one or more formats."""
     files = _resolve_inputs(inputs, glob)
     if not files:
@@ -83,10 +86,18 @@ def process(inputs, out_dir, glob, formats, config, taxonomy, emit_word_timings,
         (out_dir / "hf" / "manifest.jsonl").write_text("", encoding="utf-8")
     file_metrics = []
     per_file_segments: dict[str, list] = {}
-    for p in files:
-        m, segs = process_one(p, out_dir, fmts, cfg)
-        file_metrics.append(m)
-        per_file_segments[p.name] = segs
+    if jobs <= 1 or len(files) == 1:
+        for p in files:
+            m, segs = process_one(p, out_dir, fmts, cfg)
+            file_metrics.append(m)
+            per_file_segments[p.name] = segs
+    else:
+        from vtt_clean.driver import _worker
+        args_iter = [(str(p), str(out_dir), list(fmts), cfg) for p in files]
+        with Pool(processes=jobs) as pool:
+            for name_in, (m, segs) in pool.imap_unordered(_worker, args_iter):
+                file_metrics.append(m)
+                per_file_segments[Path(name_in).name] = segs
     if not no_stats:
         vocab_set: set[str] | None = None
         if vocab is not None:

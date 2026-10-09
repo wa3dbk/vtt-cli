@@ -85,3 +85,9 @@ def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig
     removed = ctx.extras.get("dedup_removed_chars", 0)
     metrics = compute_file_metrics(segments, removed_chars=removed)
     return metrics, segments
+
+
+def _worker(args):
+    path_str, out_dir_str, formats, cfg = args
+    from pathlib import Path as _P
+    return path_str, process_one(_P(path_str), _P(out_dir_str), set(formats), cfg)
