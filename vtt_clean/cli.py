@@ -107,10 +107,13 @@ def process(
         lang=lang,
     )
     out_dir.mkdir(parents=True, exist_ok=True)
-    # Fresh HF manifest if emitted.
+    # Clear any leftover HF shards from a prior run before workers write new ones.
     if "hf" in fmts:
-        (out_dir / "hf").mkdir(parents=True, exist_ok=True)
-        (out_dir / "hf" / "manifest.jsonl").write_text("", encoding="utf-8")
+        hf_dir = out_dir / "hf"
+        hf_dir.mkdir(parents=True, exist_ok=True)
+        for stale in hf_dir.glob("manifest.*.jsonl"):
+            stale.unlink()
+        (hf_dir / "manifest.jsonl").unlink(missing_ok=True)
     file_metrics = []
     per_file_segments: dict[str, list] = {}
     if jobs <= 1 or len(files) == 1:
@@ -126,6 +129,13 @@ def process(
             for name_in, (m, segs) in pool.imap_unordered(_worker, args_iter):
                 file_metrics.append(m)
                 per_file_segments[Path(name_in).name] = segs
+    if "hf" in fmts:
+        hf_dir = out_dir / "hf"
+        shards = sorted(hf_dir.glob("manifest.*.jsonl"))
+        with open(hf_dir / "manifest.jsonl", "w", encoding="utf-8") as out:
+            for shard in shards:
+                out.write(shard.read_text(encoding="utf-8"))
+                shard.unlink()
     if "kaldi" in fmts:
         all_segs = [seg for segs in per_file_segments.values() for seg in segs]
         emit_kaldi(all_segs, out_dir / "kaldi", taxonomy=load_taxonomy(cfg.taxonomy_path))
