@@ -12,6 +12,7 @@ import yaml
 from vtt_clean.config import PipelineSpec, TaxonomyError, load_pipeline, load_taxonomy
 from vtt_clean.driver import ALL_FORMATS, ProcessConfig, process_one
 from vtt_clean.emit.kaldi import emit_kaldi
+from vtt_clean.emit.stm import _stem as _hf_stem
 from vtt_clean.parse.vtt import parse_vtt
 from vtt_clean.pipeline.base import PipelineContext
 from vtt_clean.pipeline.runner import build_runner
@@ -135,16 +136,18 @@ def process(
 
         args_iter = [(str(p), str(out_dir), list(fmts), cfg) for p in files]
         with Pool(processes=jobs) as pool:
-            for name_in, (m, segs) in pool.imap_unordered(_worker, args_iter):
+            # imap preserves input order; ensures deterministic metrics/segments ordering.
+            for name_in, (m, segs) in pool.imap(_worker, args_iter):
                 file_metrics.append(m)
                 per_file_segments[Path(name_in).name] = segs
     if "hf" in fmts:
         hf_dir = out_dir / "hf"
-        shards = sorted(hf_dir.glob("manifest.*.jsonl"))
         with open(hf_dir / "manifest.jsonl", "w", encoding="utf-8") as out:
-            for shard in shards:
-                out.write(shard.read_text(encoding="utf-8"))
-                shard.unlink()
+            for p in files:
+                shard = hf_dir / f"manifest.{_hf_stem(str(p))}.jsonl"
+                if shard.exists():
+                    out.write(shard.read_text(encoding="utf-8"))
+                    shard.unlink()
     if "kaldi" in fmts:
         all_segs = [seg for segs in per_file_segments.values() for seg in segs]
         emit_kaldi(all_segs, out_dir / "kaldi", taxonomy=load_taxonomy(cfg.taxonomy_path))

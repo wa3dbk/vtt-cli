@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -90,9 +89,9 @@ def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig
     if "hf" in formats:
         d = out_dir / "hf"
         d.mkdir(parents=True, exist_ok=True)
-        # Per-process shard; CLI merges shards into manifest.jsonl after Pool closes.
-        shard = d / f"manifest.{os.getpid()}.jsonl"
-        with open(shard, "a", encoding="utf-8") as fh:
+        # Per-input shard; CLI merges shards into manifest.jsonl in input order.
+        shard = d / f"manifest.{stem}.jsonl"
+        with open(shard, "w", encoding="utf-8") as fh:
             emit_hf(segments, fh)
     removed = ctx.extras.get("dedup_removed_chars", 0)
     metrics = compute_file_metrics(segments, removed_chars=removed)
