@@ -1,0 +1,12 @@
+version: 1
+steps:
+  - strip_cue_settings
+  - extract_word_timings
+  - youtube_dedup
+  - extract_events
+  - quran_detect
+  - strip_emoji
+  - strip_diacritics
+  - strip_punctuation
+  - normalize_whitespace
+  - compute_metrics

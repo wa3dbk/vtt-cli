@@ -1,0 +1,18 @@
+version: 1
+default_lang: ar
+delimiters: {square: events, curly: smart, paren: aside}
+events:
+  music: ["موسيقى"]
+  applause: ["موسيقى"]       # duplicate surface — must be rejected
+  unk: []
+rules: {split_adjacent: true, quran_detection: {min_diacritics: 2}}
+normalization:
+  strip_diacritics: true
+  strip_punctuation: true
+  strip_emoji: true
+  collapse_whitespace: true
+  lowercase: false
+output_tokens:
+  music: "<music>"
+  applause: "<applause>"
+  unk: "<unk>"

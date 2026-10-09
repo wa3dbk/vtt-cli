@@ -1,0 +1,46 @@
+version: 1
+default_lang: ar
+delimiters:
+  square:   events        # [...] → event lookup
+  curly:    smart         # {...} → Quran if ≥2 diacritics, else event lookup
+  paren:    aside         # (...) → event type "aside"; configurable
+events:
+  music:        ["موسيقى"]
+  applause:     ["تصفيق", "تصفيق الجمهور"]
+  laugh:        ["ضحك"]
+  singing:      ["غناء"]
+  cheer:        ["هتافات"]
+  scream:       ["صراخ"]
+  sigh:         ["تنهّد", "تنهد"]
+  breath:       ["شهيق", "زفير"]
+  cough:        ["سعال"]
+  throat_clear: ["تنحنُح", "تنحنح"]
+  snore:        ["أصوات شخير", "شخير"]
+  noise:        ["ضوضاء", "ضجيج"]
+  aside:        []
+  unk:          []
+rules:
+  split_adjacent: true           # [a][b] → two events
+  quran_detection:
+    min_diacritics: 2            # tashkeel chars in {...} to trigger quran=true
+normalization:
+  strip_diacritics:    true      # non-Quran only; Quran preserved regardless
+  strip_punctuation:   true
+  strip_emoji:         true
+  collapse_whitespace: true
+  lowercase:           false
+output_tokens:                   # Babel-style, English, always
+  music:        "<music>"
+  applause:     "<applause>"
+  laugh:        "<laugh>"
+  singing:      "<singing>"
+  cheer:        "<cheer>"
+  scream:       "<scream>"
+  sigh:         "<sigh>"
+  breath:       "<breath>"
+  cough:        "<cough>"
+  throat_clear: "<throat>"
+  snore:        "<noise>"
+  noise:        "<noise>"
+  aside:        ""               # dropped from text; event retained in JSONL
+  unk:          "<unk>"

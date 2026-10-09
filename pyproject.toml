@@ -26,6 +26,10 @@ vtt-clean = "vtt_clean.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["vtt_clean"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"vtt_clean/default_taxonomy.yaml" = "vtt_clean/default_taxonomy.yaml"
+"vtt_clean/default_pipeline.yaml" = "vtt_clean/default_pipeline.yaml"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
