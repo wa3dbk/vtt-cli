@@ -7,12 +7,13 @@ from pathlib import Path
 from vtt_clean.config import PipelineSpec, load_pipeline, load_taxonomy
 from vtt_clean.emit.hf import emit_hf
 from vtt_clean.emit.jsonl import emit_jsonl
+from vtt_clean.emit.kaldi import emit_kaldi_shard
 from vtt_clean.emit.stm import _stem, emit_stm
 from vtt_clean.emit.txt import emit_txt
 from vtt_clean.parse.vtt import parse_vtt
 from vtt_clean.pipeline.base import PipelineContext
 from vtt_clean.pipeline.runner import build_runner
-from vtt_clean.stats.metrics import compute_file_metrics
+from vtt_clean.stats.metrics import FileAggregate, build_file_aggregate
 
 # Eagerly import step modules so @register_step runs
 for _m in (
@@ -46,7 +47,7 @@ class ProcessConfig:
     stm_channel: str = "1"
 
 
-def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig):
+def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig) -> FileAggregate:
     taxonomy = load_taxonomy(cfg.taxonomy_path)
     spec = load_pipeline(cfg.pipeline_path)
     steps = [s for s in spec.steps if not (cfg.no_youtube_dedup and s == "youtube_dedup")]
@@ -93,10 +94,16 @@ def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig
         shard = d / f"manifest.{stem}.jsonl"
         with open(shard, "w", encoding="utf-8") as fh:
             emit_hf(segments, fh)
+    if "kaldi" in formats:
+        # Per-input Kaldi shard; CLI merges in input order post-pool.
+        emit_kaldi_shard(segments, out_dir / "kaldi", stem=stem, taxonomy=taxonomy)
     removed = ctx.extras.get("dedup_removed_chars", 0)
-    metrics = compute_file_metrics(segments, removed_chars=removed)
-    metrics["step_char_delta"] = dict(ctx.extras.get("step_char_delta", {}))
-    return metrics, segments
+    return build_file_aggregate(
+        segments,
+        source=path.name,
+        removed_chars=removed,
+        step_char_delta=ctx.extras.get("step_char_delta", {}),
+    )
 
 
 def _worker(args):

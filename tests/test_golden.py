@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import tempfile
 from pathlib import Path
 
 from vtt_clean.driver import ProcessConfig, process_one
+from vtt_clean.emit.stm import _stem
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -13,8 +15,14 @@ def _collect():
 
 
 def _run(path: Path):
-    _, segs = process_one(path, Path("/tmp/_discard"), set(), ProcessConfig())
-    return [s.to_json_dict() for s in segs]
+    with tempfile.TemporaryDirectory() as tmp:
+        process_one(path, Path(tmp), {"jsonl"}, ProcessConfig())
+        jsonl = Path(tmp) / "jsonl" / f"{_stem(str(path))}.jsonl"
+        return [
+            json.loads(line)
+            for line in jsonl.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
 
 
 def _normalize(obj):

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from vtt_clean.model import Event, Segment
-from vtt_clean.stats.metrics import aggregate_corpus, compute_file_metrics
+from vtt_clean.stats.metrics import aggregate_corpus, build_file_aggregate, compute_file_metrics
 from vtt_clean.stats.reports import write_unknown_events_tsv
 
 
@@ -40,15 +40,13 @@ def test_file_metrics_shape():
 
 def test_aggregate_event_histogram():
     segs = [_seg("hi", 1.0, events=[Event("music", "[м]", 0, 1, "pre")])]
-    m = compute_file_metrics(segs)
-    agg = aggregate_corpus([m], {"a.ar.vtt": segs})
+    agg = aggregate_corpus([build_file_aggregate(segs, source="a.ar.vtt")])
     assert agg["event_type_counts"].get("music", 0) == 1
 
 
 def test_aggregate_unknown_tsv(tmp_path: Path):
     segs = [_seg("hi", 1.0, events=[Event("unk", "[weird]", 0, 1, "pre")], unknown=["[weird]"])]
-    m = compute_file_metrics(segs)
-    agg = aggregate_corpus([m], {"a.ar.vtt": segs})
+    agg = aggregate_corpus([build_file_aggregate(segs, source="a.ar.vtt")])
     out = tmp_path / "unk.tsv"
     write_unknown_events_tsv(agg, out)
     rows = out.read_text(encoding="utf-8").splitlines()

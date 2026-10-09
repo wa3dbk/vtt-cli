@@ -11,8 +11,8 @@ import yaml
 
 from vtt_clean.config import PipelineSpec, TaxonomyError, load_pipeline, load_taxonomy
 from vtt_clean.driver import ALL_FORMATS, ProcessConfig, process_one
-from vtt_clean.emit.kaldi import emit_kaldi
-from vtt_clean.emit.stm import _stem as _hf_stem
+from vtt_clean.emit.kaldi import merge_kaldi_shards
+from vtt_clean.emit.stm import _stem as _file_stem
 from vtt_clean.parse.vtt import parse_vtt
 from vtt_clean.pipeline.base import PipelineContext
 from vtt_clean.pipeline.runner import build_runner
@@ -124,46 +124,48 @@ def process(
         for stale in hf_dir.glob("manifest.*.jsonl"):
             stale.unlink()
         (hf_dir / "manifest.jsonl").unlink(missing_ok=True)
-    file_metrics = []
-    per_file_segments: dict[str, list] = {}
+    if "kaldi" in fmts:
+        kaldi_dir = out_dir / "kaldi"
+        kaldi_dir.mkdir(parents=True, exist_ok=True)
+        for base in ("text", "segments", "utt2spk"):
+            for stale in kaldi_dir.glob(f"{base}.*"):
+                stale.unlink()
+    file_aggs: list = []
     if jobs <= 1 or len(files) == 1:
         for p in files:
-            m, segs = process_one(p, out_dir, fmts, cfg)
-            file_metrics.append(m)
-            per_file_segments[p.name] = segs
+            file_aggs.append(process_one(p, out_dir, fmts, cfg))
     else:
         from vtt_clean.driver import _worker
 
         args_iter = [(str(p), str(out_dir), list(fmts), cfg) for p in files]
         with Pool(processes=jobs) as pool:
-            # imap preserves input order; ensures deterministic metrics/segments ordering.
-            for name_in, (m, segs) in pool.imap(_worker, args_iter):
-                file_metrics.append(m)
-                per_file_segments[Path(name_in).name] = segs
+            # imap preserves input order; ensures deterministic ordering.
+            for _name_in, fa in pool.imap(_worker, args_iter):
+                file_aggs.append(fa)
+    stems_in_order = [_file_stem(str(p)) for p in files]
     if "hf" in fmts:
         hf_dir = out_dir / "hf"
         with open(hf_dir / "manifest.jsonl", "w", encoding="utf-8") as out:
-            for p in files:
-                shard = hf_dir / f"manifest.{_hf_stem(str(p))}.jsonl"
+            for stem in stems_in_order:
+                shard = hf_dir / f"manifest.{stem}.jsonl"
                 if shard.exists():
                     out.write(shard.read_text(encoding="utf-8"))
                     shard.unlink()
     if "kaldi" in fmts:
-        all_segs = [seg for segs in per_file_segments.values() for seg in segs]
-        emit_kaldi(all_segs, out_dir / "kaldi", taxonomy=load_taxonomy(cfg.taxonomy_path))
+        merge_kaldi_shards(out_dir / "kaldi", stems_in_order)
     if not no_stats:
         vocab_set: set[str] | None = None
         if vocab is not None:
             vocab_set = set(Path(vocab).read_text(encoding="utf-8").split())
-        agg = aggregate_corpus(file_metrics, per_file_segments, vocab=vocab_set)
+        agg = aggregate_corpus(file_aggs, vocab=vocab_set)
         write_stats_json(agg, out_dir / "stats.json")
-        write_stats_tsv(file_metrics, out_dir / "stats.tsv")
+        write_stats_tsv([fa.metrics for fa in file_aggs], out_dir / "stats.tsv")
         write_unknown_events_tsv(agg, out_dir / "unknown-events.tsv")
     click.echo(f"processed {len(files)} file(s) → {out_dir}")
     if verbose:
         totals: dict[str, int] = {}
-        for m in file_metrics:
-            for step, delta in m.get("step_char_delta", {}).items():
+        for fa in file_aggs:
+            for step, delta in fa.metrics.get("step_char_delta", {}).items():
                 totals[step] = totals.get(step, 0) + delta
         if totals:
             click.echo("per-step character strip counts:")
@@ -257,14 +259,11 @@ def stats_cmd(inputs, glob, out_path: Path):
     if not files:
         raise click.ClickException("no VTT files found")
     cfg = ProcessConfig()
-    file_metrics = []
-    per_file_segments: dict[str, list] = {}
+    file_aggs: list = []
     with tempfile.TemporaryDirectory(prefix="vtt_clean_stats_") as tmp:
         discard = Path(tmp)
         with click.progressbar(files, label="stats") as bar:
             for p in bar:
-                m, segs = process_one(p, discard, set(), cfg)
-                file_metrics.append(m)
-                per_file_segments[p.name] = segs
-    agg = aggregate_corpus(file_metrics, per_file_segments)
+                file_aggs.append(process_one(p, discard, set(), cfg))
+    agg = aggregate_corpus(file_aggs)
     write_stats_json(agg, out_path)
