@@ -6,7 +6,6 @@ from pathlib import Path
 import click
 import yaml
 
-import vtt_clean.driver  # noqa: F401 — ensures step modules register
 from vtt_clean.config import PipelineSpec, TaxonomyError, load_pipeline, load_taxonomy
 from vtt_clean.driver import ALL_FORMATS, ProcessConfig, process_one
 from vtt_clean.parse.vtt import parse_vtt
