@@ -42,7 +42,8 @@ def test_runner_executes_stream_then_segment_steps():
     assert segs[0].text == "hi hello"
 
 def test_ordering_violation_raises():
-    import vtt_clean.pipeline.steps.extract_word_timings  # noqa: F401
-    import vtt_clean.pipeline.steps.youtube_dedup  # noqa: F401
+    import vtt_clean.pipeline.steps.extract_word_timings
+    import vtt_clean.pipeline.steps.youtube_dedup
+    _ = (vtt_clean.pipeline.steps.extract_word_timings, vtt_clean.pipeline.steps.youtube_dedup)
     with pytest.raises(PipelineError, match="order"):
         build_runner(PipelineSpec(steps=["youtube_dedup", "extract_word_timings"]))
