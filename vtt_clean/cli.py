@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from multiprocessing import Pool
 from pathlib import Path
 
@@ -238,10 +239,12 @@ def stats_cmd(inputs, glob, out_path: Path):
     cfg = ProcessConfig()
     file_metrics = []
     per_file_segments: dict[str, list] = {}
-    with click.progressbar(files, label="stats") as bar:
-        for p in bar:
-            m, segs = process_one(p, Path("/tmp/_vtt_clean_discard"), set(), cfg)
-            file_metrics.append(m)
-            per_file_segments[p.name] = segs
+    with tempfile.TemporaryDirectory(prefix="vtt_clean_stats_") as tmp:
+        discard = Path(tmp)
+        with click.progressbar(files, label="stats") as bar:
+            for p in bar:
+                m, segs = process_one(p, discard, set(), cfg)
+                file_metrics.append(m)
+                per_file_segments[p.name] = segs
     agg = aggregate_corpus(file_metrics, per_file_segments)
     write_stats_json(agg, out_path)
