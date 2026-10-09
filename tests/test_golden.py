@@ -32,8 +32,8 @@ def test_golden_fixtures(update_goldens):
             continue
         assert expected_path.exists(), f"missing golden for {vtt}"
         expected = [
-            json.loads(l)
-            for l in expected_path.read_text(encoding="utf-8").splitlines()
-            if l.strip()
+            json.loads(line)
+            for line in expected_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
         ]
         assert _normalize(actual) == _normalize(expected), f"golden mismatch: {vtt}"
