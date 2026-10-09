@@ -70,6 +70,8 @@ def main() -> None:
 @click.option("--vocab", type=click.Path(exists=True, path_type=Path), default=None)
 @click.option("--lang", default="ar", show_default=True)
 @click.option("--jobs", type=int, default=min(8, os.cpu_count() or 1), show_default=True)
+@click.option("--spk", "stm_spk", default="unknown", show_default=True, help="STM speaker id")
+@click.option("--channel", "stm_channel", default="1", show_default=True, help="STM channel")
 def process(
     inputs,
     out_dir,
@@ -86,6 +88,8 @@ def process(
     vocab,
     lang,
     jobs,
+    stm_spk,
+    stm_channel,
 ):
     """Clean VTTs and emit one or more formats."""
     files = _resolve_inputs(inputs, glob)
@@ -106,6 +110,8 @@ def process(
         keep_punctuation=keep_punctuation,
         keep_symbols=keep_symbols,
         lang=lang,
+        stm_spk=stm_spk,
+        stm_channel=stm_channel,
     )
     out_dir.mkdir(parents=True, exist_ok=True)
     # Clear any leftover HF shards from a prior run before workers write new ones.

@@ -43,6 +43,8 @@ class ProcessConfig:
     keep_punctuation: bool = False
     keep_symbols: bool = False
     lang: str = "ar"
+    stm_spk: str = "unknown"
+    stm_channel: str = "1"
 
 
 def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig):
@@ -79,7 +81,7 @@ def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig
         d = out_dir / "stm"
         d.mkdir(parents=True, exist_ok=True)
         with open(d / f"{stem}.stm", "w", encoding="utf-8") as fh:
-            emit_stm(segments, fh, taxonomy)
+            emit_stm(segments, fh, taxonomy, spk=cfg.stm_spk, channel=cfg.stm_channel)
     if "txt" in formats:
         d = out_dir / "txt"
         d.mkdir(parents=True, exist_ok=True)
