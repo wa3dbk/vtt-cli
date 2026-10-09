@@ -9,6 +9,7 @@ from pathlib import Path
 import click
 import yaml
 
+from vtt_clean.audit import AuditReport, ingest_text, write_report
 from vtt_clean.config import PipelineSpec, TaxonomyError, load_pipeline, load_taxonomy
 from vtt_clean.driver import ALL_FORMATS, ProcessConfig, process_one
 from vtt_clean.emit.kaldi import merge_kaldi_shards
@@ -247,6 +248,35 @@ def tax_extend(path: Path, src: Path, event: str):
     data["events"][event].extend(surfaces)
     path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
     click.echo(f"added {len(surfaces)} surface(s) to event {event!r}")
+
+
+@main.command("audit")
+@click.argument("inputs", nargs=-1, required=True)
+@click.option("--glob", default="*.vtt", show_default=True)
+@click.option(
+    "-o",
+    "--out-dir",
+    type=click.Path(path_type=Path),
+    default=Path("audit"),
+    show_default=True,
+)
+def audit_cmd(inputs, glob, out_dir: Path):
+    """Discover strange/normalizable components in a subtitle corpus.
+
+    Writes six TSVs to OUT_DIR describing codepoint frequency, NFKC-delta
+    candidates, invisible chars, mojibake sentinels, HTML/ASS markup, and
+    script-mixed tokens. No normalization is applied — raw cue text only.
+    """
+    files = _resolve_inputs(inputs, glob)
+    if not files:
+        raise click.ClickException("no VTT files found")
+    report = AuditReport()
+    with click.progressbar(files, label="audit") as bar:
+        for p in bar:
+            for cue in parse_vtt(p):
+                ingest_text(cue.text, p.name, report)
+    write_report(report, out_dir)
+    click.echo(f"audit written to {out_dir}")
 
 
 @main.command("stats")
