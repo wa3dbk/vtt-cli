@@ -55,6 +55,50 @@ def _load_yaml(path: Path) -> dict:
         return yaml.safe_load(fh)
 
 
+_REQUIRED_SECTIONS = ("events", "delimiters", "rules", "normalization", "output_tokens")
+
+
+def _require(cond: bool, msg: str) -> None:
+    if not cond:
+        raise TaxonomyError(msg)
+
+
+def _validate_taxonomy_data(data: Any) -> None:
+    _require(isinstance(data, dict), f"taxonomy must be a mapping, got {type(data).__name__}")
+    for key in _REQUIRED_SECTIONS:
+        _require(key in data, f"missing required taxonomy key: {key!r}")
+    events = data["events"]
+    _require(isinstance(events, dict), f"events: expected mapping, got {type(events).__name__}")
+    for ev, surfaces in events.items():
+        _require(isinstance(ev, str) and ev, f"events: event name must be non-empty string, got {ev!r}")
+        _require(
+            isinstance(surfaces, list),
+            f"events.{ev}: expected list, got {type(surfaces).__name__}",
+        )
+        for i, s in enumerate(surfaces):
+            _require(
+                isinstance(s, str) and s,
+                f"events.{ev}[{i}]: surface must be non-empty string, got {s!r}",
+            )
+    tokens = data["output_tokens"]
+    _require(isinstance(tokens, dict), f"output_tokens: expected mapping, got {type(tokens).__name__}")
+    for ev, tok in tokens.items():
+        _require(
+            isinstance(tok, str),
+            f"output_tokens.{ev}: token must be string, got {type(tok).__name__}",
+        )
+    extra_tokens = set(tokens) - set(events)
+    _require(
+        not extra_tokens,
+        f"output_tokens has entries for undeclared events: {sorted(extra_tokens)}",
+    )
+    for section in ("delimiters", "rules", "normalization"):
+        _require(
+            isinstance(data[section], dict),
+            f"{section}: expected mapping, got {type(data[section]).__name__}",
+        )
+
+
 def load_taxonomy(path: Path | None) -> Taxonomy:
     if path is None:
         data = yaml.safe_load(
@@ -62,17 +106,15 @@ def load_taxonomy(path: Path | None) -> Taxonomy:
         )
     else:
         data = _load_yaml(path)
-    try:
-        return Taxonomy(
-            events=data["events"],
-            delimiters=data["delimiters"],
-            rules=data["rules"],
-            normalization=data["normalization"],
-            output_tokens=data["output_tokens"],
-            default_lang=data.get("default_lang", "ar"),
-        )
-    except KeyError as e:
-        raise TaxonomyError(f"missing required taxonomy key: {e}") from e
+    _validate_taxonomy_data(data)
+    return Taxonomy(
+        events=data["events"],
+        delimiters=data["delimiters"],
+        rules=data["rules"],
+        normalization=data["normalization"],
+        output_tokens=data["output_tokens"],
+        default_lang=data.get("default_lang", "ar"),
+    )
 
 
 def load_pipeline(path: Path | None) -> PipelineSpec:
