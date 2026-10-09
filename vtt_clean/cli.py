@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import click
+import yaml
 
+import vtt_clean.driver  # noqa: F401 — ensures step modules register
+from vtt_clean.config import PipelineSpec, TaxonomyError, load_pipeline, load_taxonomy
 from vtt_clean.driver import ALL_FORMATS, ProcessConfig, process_one
+from vtt_clean.parse.vtt import parse_vtt
+from vtt_clean.pipeline.base import PipelineContext
+from vtt_clean.pipeline.runner import build_runner
 from vtt_clean.stats.metrics import aggregate_corpus
 from vtt_clean.stats.reports import (
     write_stats_json,
@@ -90,3 +97,93 @@ def process(inputs, out_dir, glob, formats, config, taxonomy, emit_word_timings,
         write_stats_tsv(file_metrics, out_dir / "stats.tsv")
         write_unknown_events_tsv(agg, out_dir / "unknown-events.tsv")
     click.echo(f"processed {len(files)} file(s) → {out_dir}")
+
+
+@main.command()
+@click.argument("file", type=click.Path(exists=True, path_type=Path))
+@click.option("--stage", default=None, help="Halt after named step")
+def inspect(file: Path, stage: str | None):
+    """Dump canonical JSONL for one file to stdout."""
+    taxonomy = load_taxonomy(None)
+    spec = load_pipeline(None)
+    steps = spec.steps
+    if stage is not None:
+        if stage not in steps:
+            raise click.ClickException(f"unknown stage: {stage!r}")
+        steps = steps[: steps.index(stage) + 1]
+    runner = build_runner(PipelineSpec(steps=steps))
+    ctx = PipelineContext(
+        taxonomy=taxonomy, source=file.name, lang="ar",
+        emit_word_timings=False, strip_diacritics_mode="non-quran",
+        keep_punctuation=False, keep_symbols=False, extras={},
+    )
+    for seg in runner.run(parse_vtt(file), ctx):
+        click.echo(json.dumps(seg.to_json_dict(), ensure_ascii=False))
+
+
+@main.group()
+def taxonomy() -> None:
+    """Taxonomy management."""
+
+
+@taxonomy.command("show")
+@click.option("--taxonomy", "taxonomy_path", type=click.Path(exists=True, path_type=Path), default=None)
+def tax_show(taxonomy_path: Path | None):
+    """Print taxonomy events, aliases, and tokens."""
+    tax = load_taxonomy(taxonomy_path)
+    for ev, surfaces in sorted(tax.events.items()):
+        tok = tax.render_token(ev)
+        click.echo(f"{ev:14}  token={tok!r}  surfaces={surfaces}")
+
+
+@taxonomy.command("validate")
+@click.argument("path", type=click.Path(exists=True, path_type=Path))
+def tax_validate(path: Path):
+    """Load a taxonomy and exit 0 on success, non-zero on failure."""
+    try:
+        load_taxonomy(path)
+    except TaxonomyError as e:
+        raise click.ClickException(str(e)) from e
+    click.echo("ok")
+
+
+@taxonomy.command("extend")
+@click.argument("path", type=click.Path(exists=True, path_type=Path))
+@click.option("--from", "src", type=click.Path(exists=True, path_type=Path), required=True)
+@click.option("--event", required=True)
+def tax_extend(path: Path, src: Path, event: str):
+    """Append surfaces from a TSV into the given event in the taxonomy YAML."""
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if event not in data["events"]:
+        raise click.ClickException(f"event {event!r} not declared in taxonomy")
+    surfaces = []
+    for line in src.read_text(encoding="utf-8").splitlines()[1:]:  # skip header
+        if not line.strip():
+            continue
+        surface = line.split("\t", 1)[0].strip("[](){} ")
+        if surface and surface not in data["events"][event]:
+            surfaces.append(surface)
+    data["events"][event].extend(surfaces)
+    path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    click.echo(f"added {len(surfaces)} surface(s) to event {event!r}")
+
+
+@main.command("stats")
+@click.argument("inputs", nargs=-1, required=True)
+@click.option("--glob", default="*.vtt", show_default=True)
+@click.option("--out", "out_path", type=click.Path(path_type=Path), default=Path("stats.json"))
+def stats_cmd(inputs, glob, out_path: Path):
+    """Parse, run pipeline, and write stats.json."""
+    files = _resolve_inputs(inputs, glob)
+    if not files:
+        raise click.ClickException("no VTT files found")
+    cfg = ProcessConfig()
+    file_metrics = []
+    per_file_segments: dict[str, list] = {}
+    with click.progressbar(files, label="stats") as bar:
+        for p in bar:
+            m, segs = process_one(p, Path("/tmp/_vtt_clean_discard"), set(), cfg)
+            file_metrics.append(m)
+            per_file_segments[p.name] = segs
+    agg = aggregate_corpus(file_metrics, per_file_segments)
+    write_stats_json(agg, out_path)
