@@ -72,6 +72,7 @@ def main() -> None:
 @click.option("--jobs", type=int, default=min(8, os.cpu_count() or 1), show_default=True)
 @click.option("--spk", "stm_spk", default="unknown", show_default=True, help="STM speaker id")
 @click.option("--channel", "stm_channel", default="1", show_default=True, help="STM channel")
+@click.option("-v", "--verbose", is_flag=True, help="Print per-step character-strip counts")
 def process(
     inputs,
     out_dir,
@@ -90,6 +91,7 @@ def process(
     jobs,
     stm_spk,
     stm_channel,
+    verbose,
 ):
     """Clean VTTs and emit one or more formats."""
     files = _resolve_inputs(inputs, glob)
@@ -155,6 +157,15 @@ def process(
         write_stats_tsv(file_metrics, out_dir / "stats.tsv")
         write_unknown_events_tsv(agg, out_dir / "unknown-events.tsv")
     click.echo(f"processed {len(files)} file(s) → {out_dir}")
+    if verbose:
+        totals: dict[str, int] = {}
+        for m in file_metrics:
+            for step, delta in m.get("step_char_delta", {}).items():
+                totals[step] = totals.get(step, 0) + delta
+        if totals:
+            click.echo("per-step character strip counts:")
+            for step, delta in sorted(totals.items(), key=lambda kv: -kv[1]):
+                click.echo(f"  {step:24} {delta:>10}")
 
 
 @main.command()

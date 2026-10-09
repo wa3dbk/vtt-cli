@@ -52,8 +52,13 @@ class Runner:
                     "unknown_events": [],
                 },
             )
+            deltas: dict[str, int] = ctx.extras.setdefault("step_char_delta", {})
             for s in self.seg_steps:
+                before = len(seg.text)
                 seg = s.apply(seg, ctx)
+                after = len(seg.text)
+                if before != after:
+                    deltas[s.name] = deltas.get(s.name, 0) + (before - after)
             segments.append(seg)
         # Propagate per-batch flags from stream steps into every segment.
         for seg in segments:

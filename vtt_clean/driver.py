@@ -96,6 +96,7 @@ def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig
             emit_hf(segments, fh)
     removed = ctx.extras.get("dedup_removed_chars", 0)
     metrics = compute_file_metrics(segments, removed_chars=removed)
+    metrics["step_char_delta"] = dict(ctx.extras.get("step_char_delta", {}))
     return metrics, segments
 
 
