@@ -6,13 +6,14 @@ from typing import TextIO
 
 from vtt_clean.config import load_taxonomy
 from vtt_clean.emit.txt import render_text_with_events
-from vtt_clean.model import Segment
+from vtt_clean.model import SCHEMA_VERSION, Segment
 
 
 def emit_hf(segments: Iterable[Segment], out: TextIO) -> None:
     tax = load_taxonomy(None)
     for seg in segments:
         d = {
+            "schema_version": SCHEMA_VERSION,
             "id": seg.id,
             "audio_filepath": "",
             "text": render_text_with_events(seg, tax),

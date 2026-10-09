@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+SCHEMA_VERSION = "1"
+
 
 @dataclass
 class RawCue:
@@ -46,7 +48,8 @@ class Segment:
     flags: dict[str, Any] = field(default_factory=dict)
 
     def to_json_dict(self) -> dict[str, Any]:
-        d = asdict(self)
+        d: dict[str, Any] = {"schema_version": SCHEMA_VERSION}
+        d.update(asdict(self))
         if self.words is None:
             d["words"] = None
         return d
