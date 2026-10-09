@@ -10,6 +10,7 @@ import yaml
 
 from vtt_clean.config import PipelineSpec, TaxonomyError, load_pipeline, load_taxonomy
 from vtt_clean.driver import ALL_FORMATS, ProcessConfig, process_one
+from vtt_clean.emit.kaldi import emit_kaldi
 from vtt_clean.parse.vtt import parse_vtt
 from vtt_clean.pipeline.base import PipelineContext
 from vtt_clean.pipeline.runner import build_runner
@@ -125,6 +126,9 @@ def process(
             for name_in, (m, segs) in pool.imap_unordered(_worker, args_iter):
                 file_metrics.append(m)
                 per_file_segments[Path(name_in).name] = segs
+    if "kaldi" in fmts:
+        all_segs = [seg for segs in per_file_segments.values() for seg in segs]
+        emit_kaldi(all_segs, out_dir / "kaldi", taxonomy=load_taxonomy(cfg.taxonomy_path))
     if not no_stats:
         vocab_set: set[str] | None = None
         if vocab is not None:

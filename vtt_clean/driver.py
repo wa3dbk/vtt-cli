@@ -7,7 +7,6 @@ from pathlib import Path
 from vtt_clean.config import PipelineSpec, load_pipeline, load_taxonomy
 from vtt_clean.emit.hf import emit_hf
 from vtt_clean.emit.jsonl import emit_jsonl
-from vtt_clean.emit.kaldi import emit_kaldi
 from vtt_clean.emit.stm import _stem, emit_stm
 from vtt_clean.emit.txt import emit_txt
 from vtt_clean.parse.vtt import parse_vtt
@@ -90,8 +89,6 @@ def process_one(path: Path, out_dir: Path, formats: set[str], cfg: ProcessConfig
         d.mkdir(parents=True, exist_ok=True)
         with open(d / "manifest.jsonl", "a", encoding="utf-8") as fh:
             emit_hf(segments, fh)
-    if "kaldi" in formats:
-        emit_kaldi(segments, out_dir / "kaldi", taxonomy)
     removed = ctx.extras.get("dedup_removed_chars", 0)
     metrics = compute_file_metrics(segments, removed_chars=removed)
     return metrics, segments

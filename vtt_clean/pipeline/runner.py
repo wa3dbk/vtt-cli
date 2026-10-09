@@ -55,6 +55,11 @@ class Runner:
             for s in self.seg_steps:
                 seg = s.apply(seg, ctx)
             segments.append(seg)
+        # Propagate per-batch flags from stream steps into every segment.
+        for seg in segments:
+            for key in ("youtube_dedup_applied", "had_karaoke_timing", "had_cue_settings"):
+                if key in ctx.extras:
+                    seg.flags[key] = bool(ctx.extras[key])
         return segments
 
 

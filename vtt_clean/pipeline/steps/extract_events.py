@@ -19,6 +19,7 @@ class ExtractEvents:
         matches = list(_SPAN.finditer(text))
         if not matches:
             seg.text = text
+            seg.text_raw = seg.text
             return seg
         min_tashkeel = ctx.taxonomy.rules.get("quran_detection", {}).get("min_diacritics", 2)
         events: list[Event] = []
@@ -56,6 +57,7 @@ class ExtractEvents:
         for s, e, rep in sorted(replacements, key=lambda t: -t[0]):
             new_text = new_text[:s] + rep + new_text[e:]
         seg.text = new_text
+        seg.text_raw = seg.text
         seg.events = events
         return seg
 
