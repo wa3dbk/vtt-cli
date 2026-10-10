@@ -13,8 +13,18 @@ from vtt_clean.pipeline.base import (
 )
 
 # Ordering constraints: {step_that_must_come_first: {steps_that_must_come_after}}
+_PRE_EXTRACT_NORMALIZERS = {
+    "nfc",
+    "decode_html_entities",
+    "strip_html_tags",
+    "unify_spaces",
+    "strip_invisibles",
+    "unify_dashes",
+}
 ORDERING: dict[str, set[str]] = {
-    "extract_word_timings": {"youtube_dedup"},
+    # strip_html_tags must come AFTER extract_word_timings so karaoke <HH:MM:SS.xxx>
+    # tags survive long enough to be parsed into word timings.
+    "extract_word_timings": {"youtube_dedup", *_PRE_EXTRACT_NORMALIZERS},
     "extract_events": {
         "strip_emoji",
         "strip_diacritics",
@@ -22,6 +32,7 @@ ORDERING: dict[str, set[str]] = {
         "normalize_whitespace",
     },
     "quran_detect": {"strip_diacritics"},
+    **{normalizer: {"extract_events"} for normalizer in _PRE_EXTRACT_NORMALIZERS},
 }
 
 
