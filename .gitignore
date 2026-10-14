@@ -17,7 +17,7 @@ build/
 venv/
 env/
 .superpowers/
-docs/superpowers/
+docs/
 .DS_Store
 .idea/
 .vscode/
