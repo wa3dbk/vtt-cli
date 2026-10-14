@@ -70,7 +70,9 @@ def _validate_taxonomy_data(data: Any) -> None:
     events = data["events"]
     _require(isinstance(events, dict), f"events: expected mapping, got {type(events).__name__}")
     for ev, surfaces in events.items():
-        _require(isinstance(ev, str) and ev, f"events: event name must be non-empty string, got {ev!r}")
+        _require(
+            isinstance(ev, str) and ev, f"events: event name must be non-empty string, got {ev!r}"
+        )
         _require(
             isinstance(surfaces, list),
             f"events.{ev}: expected list, got {type(surfaces).__name__}",
@@ -81,7 +83,9 @@ def _validate_taxonomy_data(data: Any) -> None:
                 f"events.{ev}[{i}]: surface must be non-empty string, got {s!r}",
             )
     tokens = data["output_tokens"]
-    _require(isinstance(tokens, dict), f"output_tokens: expected mapping, got {type(tokens).__name__}")
+    _require(
+        isinstance(tokens, dict), f"output_tokens: expected mapping, got {type(tokens).__name__}"
+    )
     for ev, tok in tokens.items():
         _require(
             isinstance(tok, str),
