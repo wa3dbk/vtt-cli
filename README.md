@@ -1,25 +1,89 @@
 # vtt-clean
 
-Clean and extract text from WebVTT files for ASR corpora. Handles YouTube rolling captions, Arabic diacritics, Quranic verses, and non-speech event tags via a configurable taxonomy.
+Clean and extract text from WebVTT files for multilingual ASR corpora. Handles YouTube rolling captions, HTML/font tags, mixed Unicode, non-speech event tags, and language-aware normalization across the world's top 10 languages — with a dedicated audit mode to discover what still needs normalizing.
 
 ## Install
 
-    pipx install vtt-clean
-    # or from source:
+Not yet published to PyPI. Install from source:
+
+    git clone https://github.com/wa3dbk/vtt-cli.git
+    cd vtt-cli
     pip install -e ".[dev]"
+    # or: make install
+
+This exposes the `vtt-clean` command on your `PATH`.
 
 ## Quickstart
 
-    vtt-clean process samples/*.vtt -o out/ --format all
+    vtt-clean process samples/*.vtt -o out/ --format all --lang ar
     cat out/stats.json
     cat out/unknown-events.tsv
+
+    # Discover strange/normalizable components before processing:
+    vtt-clean audit samples/ -o audit/
+    cat audit/codepoints.tsv audit/invisibles.tsv audit/tags.tsv
 
 ## Commands
 
 - `vtt-clean process INPUTS... -o OUT_DIR` — clean VTTs, emit formats.
+- `vtt-clean audit INPUTS... -o OUT_DIR` — scan raw cues for codepoints, NFKC drift, invisibles, mojibake, markup, and script-mixing. No normalization applied.
 - `vtt-clean inspect FILE [--stage STEP]` — dump canonical JSONL for one file.
 - `vtt-clean taxonomy show|validate|extend` — manage event taxonomy.
 - `vtt-clean stats INPUTS...` — compute stats only.
+
+## Languages
+
+Built-in registry covers the top 10 world languages (plus Persian). RTL and joiner-preservation policies are set per language — ZWNJ/ZWJ (U+200C/U+200D) are preserved for scripts where they carry meaning.
+
+| Code | Language   | RTL | Preserve ZWNJ/ZWJ |
+|------|------------|-----|-------------------|
+| en   | English    |     |                   |
+| zh   | Mandarin   |     |                   |
+| hi   | Hindi      |     | ✓                 |
+| es   | Spanish    |     |                   |
+| fr   | French     |     |                   |
+| ar   | Arabic     | ✓   | ✓                 |
+| bn   | Bengali    |     | ✓                 |
+| ru   | Russian    |     |                   |
+| pt   | Portuguese |     |                   |
+| ur   | Urdu       | ✓   | ✓                 |
+| fa   | Persian    | ✓   | ✓                 |
+
+Unknown codes fall back to a conservative English-shaped policy.
+
+## Safe multilingual defaults
+
+The default pipeline applies these cue-level normalizers before event extraction. All are no-ops on clean ASCII text and preserve karaoke timing tags:
+
+- **nfc** — Unicode NFC composition
+- **decode_html_entities** — `&amp;` → `&`, `&lt;` → `<`, …
+- **strip_html_tags** — removes `<font …>`, `<b>`, etc. (karaoke `<HH:MM:SS.xxx>` survives)
+- **unify_spaces** — NBSP, thin space, ideographic space → ASCII space (tab/newline preserved)
+- **strip_invisibles** — drops format-category chars (BOM, LRM, RLM, …); keeps ZWNJ/ZWJ for languages that need them
+- **unify_dashes** — en-dash, em-dash, figure dash → ASCII `-`
+
+Example — Persian subtitle with font markup and guillemets:
+
+    <font color="white">«دوشنبه»   →   «دوشنبه»
+
+## Audit workflow
+
+When pointing vtt-clean at a new corpus, run `audit` first to see what you're dealing with:
+
+    vtt-clean audit path/to/corpus/ -o audit/
+
+Outputs (TSV):
+
+| File              | Contents                                                |
+|-------------------|---------------------------------------------------------|
+| `codepoints.tsv`  | per-codepoint frequency with name and script            |
+| `nfkc_delta.tsv`  | tokens whose NFKC form differs from input (compat chars)|
+| `invisibles.tsv`  | Cf-category chars (joiners, BOM, bidi marks) per source |
+| `mojibake.tsv`    | double-UTF-8 sentinel sequences (`Ã©`, `â€™`, …)        |
+| `tags.tsv`        | HTML and ASS override markup found in cues              |
+| `script_mixed.tsv`| tokens combining chars from multiple Unicode scripts    |
+
+Audit touches raw cue text only — no normalization applied — so you can decide what belongs in the pipeline.
 
 ## Formats
 
@@ -31,49 +95,23 @@ Clean and extract text from WebVTT files for ASR corpora. Handles YouTube rollin
 | hf      | `out/hf/manifest.jsonl` — HuggingFace flat manifest  |
 | kaldi   | `out/kaldi/{text,segments,utt2spk,wav.scp}`          |
 
-## Default taxonomy
+## Event taxonomy
 
-| Event        | Token         | Arabic surfaces                    |
-|--------------|---------------|------------------------------------|
-| music        | `<music>`     | موسيقى                             |
-| applause     | `<applause>`  | تصفيق, تصفيق الجمهور               |
-| laugh        | `<laugh>`     | ضحك                                |
-| singing      | `<singing>`   | غناء                               |
-| cheer        | `<cheer>`     | هتافات                             |
-| scream       | `<scream>`    | صراخ                               |
-| sigh         | `<sigh>`      | تنهّد, تنهد                        |
-| breath       | `<breath>`    | شهيق, زفير                         |
-| cough        | `<cough>`     | سعال                               |
-| throat_clear | `<throat>`    | تنحنُح, تنحنح                      |
-| snore        | `<noise>`     | أصوات شخير, شخير                   |
-| noise        | `<noise>`     | ضوضاء, ضجيج                        |
-| aside        | *(dropped)*   | *(from `(…)` content)*             |
-| unk          | `<unk>`       | *(auto-logged to unknown-events.tsv)* |
+The default taxonomy ships with Arabic surfaces (music, applause, laugh, cheer, sigh, breath, cough, throat_clear, noise, …) — the project's original focus. The taxonomy is pluggable: edit `vtt_clean/default_taxonomy.yaml` or pass `--taxonomy my.yaml` to add surfaces for any language.
 
-Extend with your own surfaces by editing `vtt_clean/default_taxonomy.yaml` or passing `--taxonomy my.yaml`.
-
-## Extending from unknown-events.tsv
-
-    vtt-clean process samples/ -o out/
-    # look at out/unknown-events.tsv, pick surfaces that belong to "noise":
+    vtt-clean taxonomy show
     vtt-clean taxonomy extend my_taxonomy.yaml --from out/unknown-events.tsv --event noise
+
+Unknown non-speech surfaces are logged to `out/unknown-events.tsv` so you can promote them into the taxonomy incrementally.
 
 ## Canonical JSONL schema
 
-See `docs/superpowers/specs/2026-10-09-vtt-cli-design.md` for the full schema. Minimal example:
+Minimal example of a segment line:
 
-    {"id":"abc-0001","source":"abc.ar.vtt","start":1.0,"end":3.5,"duration":2.5,
+    {"id":"abc-0001","source":"abc.vtt","start":1.0,"end":3.5,"duration":2.5,
      "text":"hello world","text_raw":"hello, world!","events":[{"type":"music",...}],
-     "quran":false,"lang":"ar","n_words":2,"n_chars":11,"wps":0.8,"words":null,
+     "quran":false,"lang":"en","n_words":2,"n_chars":11,"wps":0.8,"words":null,
      "flags":{"youtube_dedup_applied":true,...}}
-
-## If you came from vtt2stm.py
-
-    # old:
-    python vtt2stm.py file.vtt > file.stm
-    # new:
-    vtt-clean process file.vtt -o out/ --format stm
-    cat out/stm/file.stm
 
 ## Development
 
