@@ -68,7 +68,13 @@ def main() -> None:
 )
 @click.option("--keep-punctuation", is_flag=True)
 @click.option("--keep-symbols", is_flag=True)
-@click.option("--no-stats", is_flag=True)
+@click.option(
+    "--stats",
+    "write_stats",
+    is_flag=True,
+    help="Write stats.json, stats.tsv, and unknown-events.tsv into the output dir. "
+    "Off by default so multiple concurrent runs sharing an output dir don't clobber each other.",
+)
 @click.option("--vocab", type=click.Path(exists=True, path_type=Path), default=None)
 @click.option("--lang", default="ar", show_default=True)
 @click.option("--jobs", type=int, default=min(8, os.cpu_count() or 1), show_default=True)
@@ -87,7 +93,7 @@ def process(
     strip_diacritics,
     keep_punctuation,
     keep_symbols,
-    no_stats,
+    write_stats,
     vocab,
     lang,
     jobs,
@@ -154,7 +160,7 @@ def process(
                     shard.unlink()
     if "kaldi" in fmts:
         merge_kaldi_shards(out_dir / "kaldi", stems_in_order)
-    if not no_stats:
+    if write_stats:
         vocab_set: set[str] | None = None
         if vocab is not None:
             vocab_set = set(Path(vocab).read_text(encoding="utf-8").split())
@@ -162,6 +168,8 @@ def process(
         write_stats_json(agg, out_dir / "stats.json")
         write_stats_tsv([fa.metrics for fa in file_aggs], out_dir / "stats.tsv")
         write_unknown_events_tsv(agg, out_dir / "unknown-events.tsv")
+    elif vocab is not None:
+        raise click.ClickException("--vocab requires --stats")
     click.echo(f"processed {len(files)} file(s) → {out_dir}")
     if verbose:
         totals: dict[str, int] = {}

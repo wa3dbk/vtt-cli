@@ -18,6 +18,7 @@ def test_process_clean_tiny_end_to_end(tmp_path: Path):
             str(tmp_path),
             "--format",
             "all",
+            "--stats",
         ],
     )
     assert result.exit_code == 0, result.output
@@ -34,7 +35,7 @@ def test_process_clean_tiny_end_to_end(tmp_path: Path):
     assert "<music>" in txt
 
 
-def test_process_no_stats_flag(tmp_path: Path):
+def test_process_default_skips_stats(tmp_path: Path):
     runner = CliRunner()
     result = runner.invoke(
         main,
@@ -45,11 +46,12 @@ def test_process_no_stats_flag(tmp_path: Path):
             str(tmp_path),
             "--format",
             "jsonl",
-            "--no-stats",
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     assert not (tmp_path / "stats.json").exists()
+    assert not (tmp_path / "stats.tsv").exists()
+    assert not (tmp_path / "unknown-events.tsv").exists()
 
 
 def test_process_parallel_jobs_2(tmp_path: Path):

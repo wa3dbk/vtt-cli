@@ -28,6 +28,6 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install -e ".[dev]"
-      - run: vtt-clean process tests/fixtures/clean tests/fixtures/youtube tests/fixtures/quran tests/fixtures/edge -o /tmp/out --format all
+      - run: vtt-clean process tests/fixtures/clean tests/fixtures/youtube tests/fixtures/quran tests/fixtures/edge -o /tmp/out --format all --stats
       - run: test -s /tmp/out/stats.json
       - run: test -s /tmp/out/unknown-events.tsv

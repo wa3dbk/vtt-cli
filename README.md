@@ -15,9 +15,11 @@ This exposes the `vtt-clean` command on your `PATH`.
 
 ## Quickstart
 
-    vtt-clean process samples/*.vtt -o out/ --format all --lang ar
+    vtt-clean process samples/*.vtt -o out/ --format all --lang ar --stats
     cat out/stats.json
     cat out/unknown-events.tsv
+
+Stats outputs (`stats.json`, `stats.tsv`, `unknown-events.tsv`) are opt-in via `--stats`. They are off by default because multiple concurrent `process` runs sharing one output dir would otherwise overwrite each other's aggregate files.
 
     # Discover strange/normalizable components before processing:
     vtt-clean audit samples/ -o audit/
